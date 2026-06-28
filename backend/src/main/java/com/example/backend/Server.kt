@@ -57,7 +57,8 @@ fun startLudoServer(port: Int = 8080) {
                     id = playerId,
                     name = playerName,
                     team = Team.RED,
-                    moveTokens = false,
+//                    moveTokens = false,
+                    moveTokens = true,
                     turnsLeft = 0,
                     playerGameState = PlayerGameState.Waiting
                 )
@@ -381,43 +382,86 @@ fun canMoveToken(roomId: Int, diceDenomination: MutableMap<Int, Int>, team: Team
     val activeRoom = gameRooms[roomId]
     if (activeRoom == null) return false
     var tokens = emptyList<Token>()
+    var homeEnabled = false
     if (team == Team.RED) {
         tokens = activeRoom?.roomData?.game?.redTokens ?: emptyList()
+        homeEnabled = activeRoom.roomData.game?.redHomeEnabled!!
     } else {
         tokens = activeRoom?.roomData?.game?.blueTokens ?: emptyList()
+        homeEnabled = activeRoom.roomData.game?.blueHomeEnabled!!
     }
     var availableSteps = mutableListOf<Int>()
     var tokensAtBase =
         if (team == Team.RED) activeRoom.roomData.game?.redBaseCount!! else activeRoom.roomData.game?.blueBaseCount!!
     for (token in tokens) {
         if (token.position == -1) {
-            if (tokensAtBase != 0 && (diceDenomination.containsKey(1) || diceDenomination.containsKey(
-                    5
-                ))
-            ) {
-                tokensAtBase -= 1
-                availableSteps.add(redPath.size - 1)
+            if (activeRoom.roomData.game!!.currentPlayer?.playerGameState == PlayerGameState.Moving) {
+                if (tokensAtBase != 0 && (diceDenomination.containsKey(1) || diceDenomination.containsKey(
+                        5
+                    ))
+                ) {
+                    tokensAtBase -= 1
+                    if (homeEnabled) availableSteps.add(redPath.size - 1) else availableSteps.add(
+                        999999999
+                    )
+                }
+            }
+            if (activeRoom.roomData.game!!.currentPlayer?.playerGameState == PlayerGameState.Rolling) {
+                if (tokensAtBase != 0) {
+                    tokensAtBase -= 1
+                    if (homeEnabled) availableSteps.add(redPath.size - 1) else availableSteps.add(
+                        999999999
+                    )
+                }
             }
         } else {
-            availableSteps.add(redPath.size - 1 - token.position)
+            if (homeEnabled) availableSteps.add(redPath.size - 1 - token.position) else availableSteps.add(
+                999999999
+            )
         }
     }
     val sortedMap = diceDenomination.toSortedMap(reverseOrder())
     if (availableSteps.isEmpty() || sortedMap.isEmpty()) return false
     for ((k, v) in sortedMap) {
-        var flag = false
         for (i in 0..<v) {
+            var flag = false
             for (j in 0..<availableSteps.size) {
                 if (availableSteps[j] >= k) {
                     availableSteps[j] -= k
                     flag = true
+                    break
                 }
             }
+            if (!flag) return false
         }
-        if (!flag) return false
 
     }
     return true
+}
+
+fun countLastCellToken(roomId: Int): Int {
+    val activeRoom = gameRooms[roomId] ?: return -1
+    var currentPlayer = activeRoom.roomData.game?.currentPlayer
+    var lastCellTokenCount = 0
+    if (currentPlayer?.team == Team.RED) {
+        for (token in activeRoom.roomData.game!!.redTokens) {
+            if (token.position != -1 && token.cords.x == 3 && token.cords.y == 6) {
+                lastCellTokenCount++
+            }
+        }
+        if (activeRoom.roomData.game?.redHomeCount?.plus(lastCellTokenCount) == activeRoom.roomData.game?.redTokens?.size) {
+            return lastCellTokenCount
+        } else return -1
+    } else {
+        for (token in activeRoom.roomData.game!!.blueTokens) {
+            if (token.position != -1 && token.cords.x == 3 && token.cords.y == 6) {
+                lastCellTokenCount++
+            }
+        }
+        if (activeRoom.roomData.game?.blueHomeCount?.plus(lastCellTokenCount) == activeRoom.roomData.game?.blueTokens?.size) {
+            return lastCellTokenCount
+        } else return -1
+    }
 }
 
 suspend fun rollDice(roomId: Int) {
@@ -442,6 +486,19 @@ suspend fun rollDice(roomId: Int) {
             matchingSession.player.switchPlayerState(PlayerGameState.Moving)
             currentPlayer?.switchPlayerState(PlayerGameState.Moving)
         }
+        val lastCellTokenCount = countLastCellToken(roomId)
+        if (lastCellTokenCount != -1) {
+            if (dice.sum == 1) {
+                if (activeRoom.roomData.game?.diceDenomination!!.getOrDefault(
+                        1,
+                        0
+                    ) + 1 == lastCellTokenCount
+                ) {
+                    matchingSession.player.switchPlayerState(PlayerGameState.Moving)
+                    currentPlayer?.switchPlayerState(PlayerGameState.Moving)
+                }
+            }
+        }
         activeRoom.roomData = activeRoom.roomData.copy(
             players = activeRoom.sessions.map { it.player }
         )
@@ -459,9 +516,7 @@ suspend fun rollDice(roomId: Int) {
         broadcastRoomState(roomId)
         return
     }
-    if (currentPlayer.playerGameState == PlayerGameState.Moving &&
-        !canMoveToken(roomId, diceDenomination!!, currentPlayer.team)
-    ) {
+    if (!canMoveToken(roomId, diceDenomination!!, currentPlayer.team)) {
         delay(800)
         getNextPlayer(roomId, currentPlayer)
         activeRoom.roomData.game?.diceDenomination?.clear()

@@ -133,8 +133,8 @@ fun DICE(
                 this.rotationX = rotationX
                 cameraDistance = 16f * density
             }
-            .background(if (gameViewModel.player.value?.team == Team.RED) Red5 else Blue5)
-            .border(2.dp, if (gameViewModel.player.value?.team == Team.RED) Red2 else Blue2)
+            .background(if (gameViewModel.currentPlayer.value?.team == Team.RED) Red5 else Blue5)
+            .border(2.dp, if (gameViewModel.currentPlayer.value?.team == Team.RED) Red2 else Blue2)
             .clickable { onDiceClick() }
             .padding(4.dp),
         contentAlignment = Alignment.Center
@@ -144,7 +144,7 @@ fun DICE(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val dotTint = if (gameViewModel.player.value?.team == Team.RED) Red2 else Blue2
+            val dotTint = if (gameViewModel.currentPlayer.value?.team == Team.RED) Red2 else Blue2
             if (value in 1..6) {
                 repeat(value) {
                     Icon(

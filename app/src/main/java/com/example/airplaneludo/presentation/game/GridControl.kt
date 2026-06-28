@@ -77,8 +77,8 @@ fun DiceCount(modifier: Modifier = Modifier, gameViewModel: GameViewModel) {
     val diceDenomination = gameViewModel.diceDenomination
     val currentSelected = gameViewModel.selectedStep
     val animatedIconColor by rememberInfiniteTransition().animateColor(
-        initialValue = if (gameViewModel.player.value?.team == Team.RED) Blue6 else Red6,
-        targetValue = if (gameViewModel.player.value?.team == Team.RED) Blue3 else Red3,
+        initialValue = if (gameViewModel.currentPlayer.value?.team == Team.RED) Blue6 else Red6,
+        targetValue = if (gameViewModel.currentPlayer.value?.team == Team.RED) Blue3 else Red3,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 2000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
@@ -122,7 +122,7 @@ fun UnitCount(
             .border(2.dp, Color.White, RoundedCornerShape(32.dp))
             .padding(2.dp)
             .clickable(onClick = {
-                if (gameViewModel.player.value == gameViewModel.currentPlayer.value) {
+                if (gameViewModel.canMoveToken.value) {
                     selectedCount()
                 }
             }),
@@ -137,13 +137,13 @@ fun UnitCount(
         ) {
             Box(
                 modifier = Modifier
-                    .background(if (gameViewModel.player.value?.team == Team.RED) Red3 else Blue3)
+                    .background(if (gameViewModel.currentPlayer.value?.team == Team.RED) Red3 else Blue3)
                     .fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "${value}",
-                    color = if (gameViewModel.player.value?.team == Team.RED) Red5 else Blue5,
+                    color = if (gameViewModel.currentPlayer.value?.team == Team.RED) Red5 else Blue5,
                     fontSize = 32.sp
                 )
                 if (count > 1) {
@@ -161,11 +161,11 @@ fun UnitCount(
                             Icon(
                                 imageVector = Icons.Filled.Circle,
                                 contentDescription = "token",
-                                tint = if (gameViewModel.player.value?.team == Team.RED) Red5 else Blue5
+                                tint = if (gameViewModel.currentPlayer.value?.team == Team.RED) Red5 else Blue5
                             )
                             Text(
                                 text = "$count",
-                                color = if (gameViewModel.player.value?.team == Team.RED) Red3 else Blue3
+                                color = if (gameViewModel.currentPlayer.value?.team == Team.RED) Red3 else Blue3
                             )
                         }
                     }

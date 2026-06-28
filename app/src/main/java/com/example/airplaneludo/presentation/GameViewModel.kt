@@ -212,6 +212,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             canRollDice.value = false
         }
+        if (updatedPlayer?.playerGameState == PlayerGameState.Moving) {
+            canMoveToken.value = true
+        } else {
+            canMoveToken.value = false
+        }
         println(player.value.toString())
     }
 
@@ -335,6 +340,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     val dice2 = mutableStateOf(0)
     var triggerDiceRoll = mutableStateOf(0L)
     val canRollDice = mutableStateOf(false)
+    val canMoveToken = mutableStateOf(false)
     val selectedStep = mutableStateOf(0)
     val gameOver = mutableStateOf(false)
     val winningTeam = mutableStateOf<Team?>(null)

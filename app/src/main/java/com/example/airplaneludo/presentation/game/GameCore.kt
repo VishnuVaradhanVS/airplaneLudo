@@ -41,7 +41,9 @@ import androidx.navigation.NavController
 import com.example.airplaneludo.presentation.GameViewModel
 import com.example.airplaneludo.presentation.Screen
 import com.example.airplaneludo.ui.theme.Blue3
+import com.example.airplaneludo.ui.theme.Blue5
 import com.example.airplaneludo.ui.theme.Red3
+import com.example.airplaneludo.ui.theme.Red5
 import com.example.shared.data.Team
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,7 +58,7 @@ fun GameCore(
         CenterAlignedTopAppBar(title = {
             Text(
                 "${gameViewModel.currentPlayer.value.name}'s TURN",
-                color = Color.White
+                color = if(gameViewModel.currentPlayer.value.team==Team.RED) Red5 else Blue5
             )
         }, navigationIcon = {
             Icon(
