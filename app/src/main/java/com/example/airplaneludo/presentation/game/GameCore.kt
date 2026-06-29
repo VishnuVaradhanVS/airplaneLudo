@@ -1,5 +1,6 @@
 package com.example.airplaneludo.presentation.game
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,6 +28,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +47,8 @@ import com.example.airplaneludo.ui.theme.Blue5
 import com.example.airplaneludo.ui.theme.Red3
 import com.example.airplaneludo.ui.theme.Red5
 import com.example.shared.data.Team
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,7 +57,13 @@ fun GameCore(
     navController: NavController,
     gameViewModel: GameViewModel
 ) {
+    val coroutineScope = rememberCoroutineScope()
     gameViewModel.gameAudioManager.stopBackgroundMusic()
+    BackHandler(enabled = true) {
+        coroutineScope.launch {
+            gameViewModel.showExitRoom.value=true
+        }
+    }
     Scaffold(topBar = {
         CenterAlignedTopAppBar(title = {
             Text(
@@ -93,6 +103,11 @@ fun GameCore(
         if (gameViewModel.gameOver.value) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 GameResult(modifier = Modifier, gameViewModel, navController)
+            }
+        }
+        if (gameViewModel.gameInfo.value) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                GameInfo(modifier = Modifier, gameViewModel)
             }
         }
         if (gameViewModel.showExitRoom.value) {
@@ -204,6 +219,7 @@ fun GameExit(
     navController: NavController,
     message: String? = null
 ) {
+    val coroutineScope = rememberCoroutineScope()
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Box(
             modifier = modifier
@@ -254,7 +270,7 @@ fun GameExit(
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = if (message != null) gameViewModel.exitRoomMessage.value!! else "LEAVE GAME?",
+                    text = if (message != null) gameViewModel.exitRoomMessage.value!! else "LEAVE GAME ?",
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                     style = TextStyle(
@@ -272,7 +288,9 @@ fun GameExit(
                         gameViewModel.gameStartIsPlaying.value = false
                         if (gameViewModel.player.value?.id == gameViewModel.host.value?.id)
                             gameViewModel.stopNetworkDiscovery()
-                        gameViewModel.exitRoom()
+                        coroutineScope.launch {
+                            gameViewModel.exitRoom()
+                        }
                         navController.navigate(Screen.Dashboard.route)
                     },
                     modifier = Modifier
@@ -291,6 +309,93 @@ fun GameExit(
                     ) {
                         Text(
                             text = "EXIT",
+                            style = TextStyle(
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.5.sp,
+                                color = Color.Black
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GameInfo(
+    modifier: Modifier = Modifier,
+    gameViewModel: GameViewModel,
+) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = modifier
+                .padding(horizontal = 32.dp, vertical = 64.dp)
+                .shadow(24.dp, RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFF1E1E2C).copy(alpha = 0.95f))
+                .border(
+                    2.dp,
+                    if (gameViewModel.winningTeam.value == Team.RED) Red3 else Blue3,
+                    RoundedCornerShape(24.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "INFO",
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = TextStyle(
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.5.sp
+                    )
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = gameViewModel.gameInfoMessage.value,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = TextStyle(
+                        color = if (gameViewModel.winningTeam.value == Team.RED) Red3 else Blue3,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.5.sp
+                    )
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = {
+                        gameViewModel.gameAudioManager.playClick()
+                        gameViewModel.gameInfo.value=false
+                        gameViewModel.gameInfoMessage.value=""
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .shadow(12.dp, RoundedCornerShape(14.dp)),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "OK",
                             style = TextStyle(
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Black,

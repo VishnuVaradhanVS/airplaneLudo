@@ -8,7 +8,8 @@ data class Room(
     val hostId: Long,
     val players: List<Player> = emptyList(),
     var baseTokenCount: Int,
-    var game: Game? = null
+    var game: Game? = null,
+    var inGame: Boolean
 ) {
     val redTeam: List<Player> get() = players.filter { it.team == Team.RED }
     val blueTeam: List<Player> get() = players.filter { it.team == Team.BLUE }

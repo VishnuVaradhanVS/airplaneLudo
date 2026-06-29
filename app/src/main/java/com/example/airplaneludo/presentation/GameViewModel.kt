@@ -103,15 +103,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 ) {
                     webSocketSession = this
                     isConnected.value = true
-//                    println("Successfully connected to Ludo Server on LAN!")
                     for (frame in incoming) {
                         if (frame is Frame.Text) {
                             val jsonState = frame.readText()
-//                            Log.i("res", jsonState)
-//                            println(jsonState)
                             val gamePacket = Json.decodeFromString<GamePackets>(jsonState)
-//                            Log.i("serverResponse", gamePacket.toString())
-//                            println(gamePacket.toString())
                             when (gamePacket.lobbyAction) {
                                 LobbyAction.RoomUpdate -> {
                                     updateRoomState(gamePacket.room)
@@ -119,6 +114,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
                                 LobbyAction.PlayerAck -> {
                                     updatePlayerState(gamePacket.player)
+                                }
+
+                                LobbyAction.RoomInGame -> {
+                                    roomInGame.value = true
                                 }
 
                                 else -> {
@@ -135,6 +134,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                                     gameStartIsPlaying.value = true
                                     showExitRoom.value = false
                                     exitRoomMessage.value = null
+                                    gameInfo.value = false
+                                    gameInfoMessage.value = ""
                                 }
 
                                 GameAction.AnimateTokenMovement -> {
@@ -154,6 +155,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                                     winningTeam.value = currentPlayer.value.team
                                 }
 
+                                GameAction.LeaveGame -> {
+                                    gameInfo.value = true
+                                    gameInfoMessage.value =
+                                        "${gamePacket.player?.name} left the game"
+                                }
+
                                 else -> {
 
                                 }
@@ -167,7 +174,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 val reason = webSocketSession?.closeReason?.await()
                 if (reason?.code == CloseReason.Codes.VIOLATED_POLICY.code) {
                     showLobbyInfo.value = true
-                    lobbyMessage.value = "You were kicked from the room by the host"
+                    if (roomInGame.value) {
+                        lobbyMessage.value = "Room already in game"
+                    } else {
+                        lobbyMessage.value = "You were kicked from the room by the host"
+                    }
                 } else if (reason?.code == CloseReason.Codes.GOING_AWAY.code) {
                     gameStartIsPlaying.value = false
                     if (!gameStartIsPlaying.value) {
@@ -264,7 +275,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         delay(400)
     }
 
-    fun exitRoom() {
+    suspend fun exitRoom() {
         viewModelScope.launch {
             try {
                 webSocketSession?.close(
@@ -349,6 +360,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     var redTokens = mutableStateListOf<Token>()
     var blueTokens = mutableStateListOf<Token>()
     var diceDenomination = mutableStateMapOf<Int, Int>()
+    var roomInGame = mutableStateOf(false)
+    var gameInfo = mutableStateOf(false)
+    var gameInfoMessage = mutableStateOf("")
 
     fun updateGameState(currentGame: Game?) {
         if (currentGame == null) return

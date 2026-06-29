@@ -1,8 +1,6 @@
 package com.example.backend
 
-// In-memory data store for game states and real-time sockets
-//val activeRooms = ConcurrentHashMap<Int, Room>()
-//val connectedSessions = ConcurrentHashMap<Int, MutableList<WebSocketSession>>()
+
 import com.example.shared.data.Dice
 import com.example.shared.data.Game
 import com.example.shared.data.GameAction
@@ -51,6 +49,23 @@ fun startLudoServer(port: Int = 8080) {
                     close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "Invalid Room ID"))
                     return@webSocket
                 }
+                val activeRoomCheck = gameRooms[incomingRoomId]
+                if (activeRoomCheck != null && activeRoomCheck.roomData.inGame) {
+                    val gamePacket = GamePackets(lobbyAction = LobbyAction.RoomInGame)
+                    val jsonState = Json.encodeToString(gamePacket)
+                    try {
+                        send(Frame.Text(jsonState))
+                        close(
+                            CloseReason(
+                                CloseReason.Codes.VIOLATED_POLICY,
+                                "Game already in progress"
+                            )
+                        )
+                    } catch (e: Exception) {
+                        println("Failed to send in-game rejection: ${e.localizedMessage}")
+                    }
+                    return@webSocket
+                }
                 val playerId = System.currentTimeMillis() % 10000
                 val playerName = call.request.queryParameters["name"] ?: "Player_$playerId"
                 val newPlayer = Player(
@@ -63,7 +78,14 @@ fun startLudoServer(port: Int = 8080) {
                 )
                 val currentSession = LudoSession(player = newPlayer, session = this)
                 val activeRoom = gameRooms.computeIfAbsent(incomingRoomId) { id ->
-                    ActiveRoom(roomData = Room(id = id, hostId = playerId, baseTokenCount = 6))
+                    ActiveRoom(
+                        roomData = Room(
+                            id = id,
+                            hostId = playerId,
+                            baseTokenCount = 6,
+                            inGame = false
+                        )
+                    )
                 }
                 newPlayer.team = if (activeRoom.sessions.size % 2 == 0) Team.RED else Team.BLUE
                 activeRoom.sessions.add(currentSession)
@@ -141,6 +163,9 @@ fun startLudoServer(port: Int = 8080) {
                     println("Session error in room $incomingRoomId: ${e.localizedMessage}")
                 } finally {
                     val activeRoom = gameRooms[incomingRoomId]
+                    val leavingPlayer =
+                        activeRoom?.roomData?.players?.first { p -> p.id == playerId }
+                    leaveGame(incomingRoomId, leavingPlayer!!)
                     if (activeRoom != null) {
                         activeRoom.sessions.removeIf { it.player.id == playerId }
                         println("Server Finally: Removed session for player ID $playerId from room $incomingRoomId")
@@ -223,6 +248,19 @@ suspend fun closeRoom(roomId: Int) {
     gameRooms.remove(roomId)
 }
 
+suspend fun leaveGame(roomId: Int, player: Player) {
+    val activeRoom = gameRooms[roomId] ?: return
+    val gamePacket = GamePackets(gameAction = GameAction.LeaveGame, player = player)
+    val jsonState = Json.encodeToString(gamePacket)
+    activeRoom.sessions.forEach { ludoSession ->
+        try {
+            ludoSession.session.send(Frame.Text(jsonState))
+        } catch (e: Exception) {
+
+        }
+    }
+}
+
 suspend fun swapTeam(player: Player?, roomId: Int?) {
     if (player == null || roomId == null) {
         return
@@ -290,6 +328,7 @@ suspend fun startGame(roomId: Int) {
         activeRoom.roomData.players.last { player -> player.team == Team.BLUE }
     )
     activeRoom.roomData = activeRoom.roomData.copy(game = game)
+    activeRoom.roomData = activeRoom.roomData.copy(inGame = true)
     broadcastRoomState(roomId)
     val gamePacket = GamePackets(gameAction = GameAction.StartGame)
     val jsonState = Json.encodeToString(gamePacket)
@@ -708,6 +747,7 @@ suspend fun gameOver(roomId: Int) {
     val activeRoom = gameRooms[roomId] ?: return
     val gamePacket = GamePackets(gameAction = GameAction.EndGame)
     val jsonState = Json.encodeToString(gamePacket)
+    activeRoom.roomData = activeRoom.roomData.copy(inGame = false)
     activeRoom.sessions.forEach { ludoSession ->
         try {
             ludoSession.session.send(Frame.Text(jsonState))

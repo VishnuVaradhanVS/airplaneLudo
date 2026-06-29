@@ -4,5 +4,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class LobbyAction {
-    PlayerAck, RoomUpdate, Kick, SwapTeam, ChangeTokenCount
+    PlayerAck, RoomUpdate, Kick, SwapTeam, ChangeTokenCount, RoomInGame
 };

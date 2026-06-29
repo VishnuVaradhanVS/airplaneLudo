@@ -105,6 +105,7 @@ fun LobbyInfo(
                         navController.navigate(Screen.Dashboard.route)
                         gameViewModel.showLobbyInfo.value = false
                         gameViewModel.hostRoomClose.value = false
+                        gameViewModel.roomInGame.value=false
                         gameViewModel.lobbyMessage.value = ""
                     },
                     modifier = Modifier

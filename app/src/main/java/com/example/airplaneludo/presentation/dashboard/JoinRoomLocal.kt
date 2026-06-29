@@ -145,6 +145,7 @@ fun JoinRoomLocal(
                         gameViewModel.hostIp.value,
                         gameViewModel.roomId.value!!
                     )
+                    gameViewModel.showLobbyInfo.value = false
                 },
                 modifier = Modifier
                     .fillMaxWidth()

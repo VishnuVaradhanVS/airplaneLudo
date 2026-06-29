@@ -1,5 +1,6 @@
 package com.example.airplaneludo.presentation.lobby
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -88,6 +89,12 @@ fun Lobby(
     )
     val redTeamPlayers = currentRoom.value?.redTeam ?: emptyList()
     val blueTeamPlayers = currentRoom.value?.blueTeam ?: emptyList()
+    BackHandler(enabled = true) {
+        coroutineScope.launch {
+            gameViewModel.shutdownHostedRoom()
+            navController.navigate(Screen.Dashboard.route)
+        }
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
