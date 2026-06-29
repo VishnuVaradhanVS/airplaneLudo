@@ -57,8 +57,7 @@ fun startLudoServer(port: Int = 8080) {
                     id = playerId,
                     name = playerName,
                     team = Team.RED,
-//                    moveTokens = false,
-                    moveTokens = true,
+                    moveTokens = false,
                     turnsLeft = 0,
                     playerGameState = PlayerGameState.Waiting
                 )
